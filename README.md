@@ -120,7 +120,7 @@ Este proyecto implementa un modelo de machine learning para predecir precios de 
 
 La aplicación está desplegada en Render y puedes probarla en el siguiente enlace:
 
-➡️ **[Probar la Aplicación Aquí]((https://prices-houses-prediction.onrender.com))** ⬅️
+➡️ **[Probar la Aplicación Aquí](https://prices-houses-prediction.onrender.com)** ⬅️
 
 ## Características
 * Predicción de precios basada en múltiples características de la vivienda.
