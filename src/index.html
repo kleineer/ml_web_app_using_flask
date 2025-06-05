@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Predicción de Precio de Viviendas</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        .container { max-width: 800px; margin: 40px auto; background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 15px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 30px; }
+        h2.prediction-title { text-align: center; color: #16a085; margin-top: 30px; margin-bottom: 10px;}
+        form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .form-group { display: flex; flex-direction: column; }
+        label { font-weight: bold; margin-bottom: 8px; display: block; color: #555; font-size: 0.9em;}
+        input[type="number"], input[type="text"], select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 0.95em;
+        }
+        input[type="submit"] {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: background-color 0.3s ease;
+            grid-column: 1 / -1; /* Hace que el botón ocupe todo el ancho */
+        }
+        input[type="submit"]:hover { background-color: #2980b9; }
+        .prediction-result {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #eafaf1;
+            border-left: 5px solid #2ecc71;
+            border-radius: 4px;
+            font-size: 1.2em;
+            text-align: center;
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .error-message {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fdecea;
+            border-left: 5px solid #e74c3c;
+            color: #c0392b;
+            border-radius: 4px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Predicción de Precio de Viviendas</h1>
+
+        <form action="{{ url_for('predict') }}" method="post">
+            <div class="form-group">
+                <label for="bedrooms">Habitaciones (ej: 3):</label>
+                <input type="number" step="1" min="0" id="bedrooms" name="bedrooms" value="{{ form_data.get('bedrooms', 3) }}" required>
+            </div>
+            <div class="form-group">
+                <label for="bathrooms">Baños (ej: 2.5):</label>
+                <input type="number" step="0.25" min="0" id="bathrooms" name="bathrooms" value="{{ form_data.get('bathrooms', 2.5) }}" required>
+            </div>
+            <div class="form-group">
+                <label for="sqft_living">Pies Cuadrados Habitables (ej: 1800):</label>
+                <input type="number" step="10" min="300" id="sqft_living" name="sqft_living" value="{{ form_data.get('sqft_living', 1800) }}" required>
+            </div>
+            <div class="form-group">
+                <label for="sqft_lot">Pies Cuadrados del Lote (ej: 5000):</label>
+                <input type="number" step="10" min="500" id="sqft_lot" name="sqft_lot" value="{{ form_data.get('sqft_lot', 5000) }}" required>
+            </div>
+            <div class="form-group">
+                <label for="floors">Pisos (ej: 2):</label>
+                <input type="number" step="0.5" min="1" id="floors" name="floors" value="{{ form_data.get('floors', 2.0) }}" required>
+            </div>
+             <div class="form-group">
+                <label for="waterfront">Frente al Mar (0=No, 1=Sí):</label>
+                <select id="waterfront" name="waterfront">
+                    <option value="0" {% if form_data.get('waterfront') == '0' %}selected{% endif %}>No</option>
+                    <option value="1" {% if form_data.get('waterfront') == '1' %}selected{% endif %}>Sí</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="view">Vista (0-4, ej: 0):</label>
+                <input type="number" step="1" min="0" max="4" id="view" name="view" value="{{ form_data.get('view', 0) }}" required>
+            </div>
+            <div class="form-group">
+                <label for="condition">Condición (1-5, ej: 3):</label>
+                <input type="number" step="1" min="1" max="5" id="condition" name="condition" value="{{ form_data.get('condition', 3) }}" required>
+            </div>
+            <div class="form-group">
+                <label for="sqft_above">Pies Cuadrados Sobre Nivel (ej: 1500):</label>
+                <input type="number" step="10" min="300" id="sqft_above" name="sqft_above" value="{{ form_data.get('sqft_above', 1500) }}" required>
+            </div>
+            <div class="form-group">
+                <label for="sqft_basement">Pies Cuadrados Sótano (0 si no tiene, ej: 300):</label>
+                <input type="number" step="10" min="0" id="sqft_basement" name="sqft_basement" value="{{ form_data.get('sqft_basement', 0) }}" required>
+            </div>
+            <div class="form-group">
+                <label for="yr_built">Año Construcción (ej: 1990):</label>
+                <input type="number" step="1" min="1800" max="{{ PREDICTION_YEAR }}" id="yr_built" name="yr_built" value="{{ form_data.get('yr_built', 1990) }}" required>
+            </div>
+            <div class="form-group">
+                <label for="yr_renovated">Año Renovación (0 si no aplica, ej: 0 o 2005):</label>
+                <input type="number" step="1" min="0" max="{{ PREDICTION_YEAR }}" id="yr_renovated" name="yr_renovated" value="{{ form_data.get('yr_renovated', 0) }}" required>
+            </div>
+            <div class="form-group">
+                <label for="city">Ciudad:</label>
+                <select id="city" name="city" required>
+                    {% for city_name in city_options %}
+                        <option value="{{ city_name }}" {% if form_data.get('city') == city_name %}selected{% endif %}>{{ city_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+             <div class="form-group">
+                <label for="sale_month">Mes de Venta (Estimado, 1-12):</label>
+                <input type="number" step="1" min="1" max="12" id="sale_month" name="sale_month" value="{{ form_data.get('sale_month', 6) }}" required>
+            </div>
+
+            <input type="submit" value="Predecir Precio">
+        </form>
+
+        {% if prediction_text %}
+            {% if 'Error' in prediction_text %}
+                <div class="error-message">
+                    <p>{{ prediction_text }}</p>
+                </div>
+            {% else %}
+                <h2 class="prediction-title">Resultado de la Predicción</h2>
+                <div class="prediction-result">
+                    <p>{{ prediction_text }}</p>
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+</body>
+</html>
